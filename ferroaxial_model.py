@@ -2,7 +2,7 @@ import numpy as np
 import pythtb
 
 def model_ferroaxial_pythtb(mu=0.0, t=1.0, tp=1.0, Delta=1.0, t2=0.5, t3=1.0, a=1.0, c=1.0, 
-                            spin=False, t_spin=0.0,
+                            spin=False, tsz=0.0, tsx=0.0, tsy=0.0,
                             rot_deg=0):
 
     rot_alpha = rot_deg * np.pi/180  # Rotation angle in radians
@@ -19,8 +19,20 @@ def model_ferroaxial_pythtb(mu=0.0, t=1.0, tp=1.0, Delta=1.0, t2=0.5, t3=1.0, a=
     #lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1, 2])
     #my_model = pythtb.TBModel(lattice)
 
+    if spin:
+        sigma_0 = np.array([1., 0., 0., 0])
+        sigma_x = np.array([0., 1., 0., 0])
+        sigma_y = np.array([0., 0., 1., 0])
+        sigma_z = np.array([0., 0., 0., 1])
+    else:
+        sigma_0 = 1
+        sigma_x = 0
+        sigma_y = 0
+        sigma_z = 0
+
     my_model = pythtb.tb_model(3, 3, lat, orb, nspin=2 if spin else 1)
-    my_model.set_onsite([Delta - mu, -Delta - mu])
+    onsite = tsx*sigma_x + tsy*sigma_y -mu*sigma_0
+    my_model.set_onsite([Delta*sigma_0 + onsite, -Delta*sigma_0 + onsite])
 
     
     for shift in [[0,0,0], [0, -1,0], [-1,-1,0]]:
@@ -42,17 +54,12 @@ def model_ferroaxial_pythtb(mu=0.0, t=1.0, tp=1.0, Delta=1.0, t2=0.5, t3=1.0, a=
         my_model.set_hop(-t3, 0, 1, [ 0, -2,  0])
 
 
-    if spin:
-        sigma_0 = np.array([1., 0., 0., 0])
-        sigma_z = np.array([0., 0., 0., 1])
-    else:
-        sigma_0 = 1
-        sigma_z = 0
+
 
     for shift in [[0,1,0], [1,0,0], [-1,-1,0]]: # Skipping [0,0,0] for diagonal
         for i, sign in enumerate([1, -1]):
             # In-plane second neighbor hoppings (t2)
-            hop = t2*sigma_0 + 1j*t_spin*sign*sigma_z
+            hop = t2*sigma_0 + 1j*tsz*sign*sigma_z
             my_model.set_hop(hop, i, i, shift)
 
     return my_model
